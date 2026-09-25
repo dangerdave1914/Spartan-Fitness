@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<title>Spartan Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#000; --card:#141414; --raise:#1E1E1E; --line:#2C2C2C;
+  --white:#fff; --chalk:#B3B3B3; --red:#D0101E; --gold:#F2B705; --ok:#3FB36B;
+  --pad:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--ink);color:var(--white);font:16px/1.45 Inter,system-ui,sans-serif;display:flex;flex-direction:column;overscroll-behavior:none}
+h1,h2,h3,.cond{font-family:'Barlow Condensed',Impact,sans-serif;letter-spacing:.02em;margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+header{padding:calc(env(safe-area-inset-top) + 12px) var(--pad) 0;flex:none;border-top:3px solid var(--red)}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.brand h1{font-size:24px;font-weight:700;text-transform:uppercase;white-space:nowrap}
+.brand h1 span{color:var(--gold)}
+.stamp{font-size:12px;color:var(--chalk);text-align:right}
+.week{display:flex;align-items:center;gap:6px;padding:12px 0 10px}
+.days{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1}
+.days::-webkit-scrollbar{display:none}
+.day,.arrow{flex:none;border:1px solid var(--line);background:transparent;color:var(--chalk);border-radius:999px;padding:7px 10px;font:600 15px/1 'Barlow Condensed',sans-serif;cursor:pointer}
+.arrow{padding:7px 10px}
+.day[aria-pressed="true"]{background:var(--white);color:var(--ink);border-color:var(--white)}
+.day.today{border-color:var(--gold)}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);flex:none}
+.tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;color:var(--chalk);padding:11px 0;font:600 15px/1 'Barlow Condensed',sans-serif;cursor:pointer;position:relative}
+.dot[hidden]{display:none}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:3px;vertical-align:top}
+.flagbar{display:block;width:100%;text-align:left;background:#2a0a0c;border:1px solid var(--red);border-radius:10px;padding:11px 12px;margin:0 0 14px;cursor:pointer;font-size:14px}
+.mem{border-bottom:1px solid var(--line);padding:12px 0}
+.mem .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.mem .nm{font:700 19px/1.15 'Barlow Condensed',sans-serif}
+.when{font-size:13px;font-weight:600;white-space:nowrap}
+.when.flag{color:var(--red)} .when.ok{color:var(--ok)}
+.inv{display:grid;grid-template-columns:1fr auto;gap:2px 10px;border-bottom:1px solid var(--line);padding:11px 0;align-items:center}
+.inv .cnt{font:700 24px/1 'Barlow Condensed',sans-serif;text-align:right}
+.inv.low .cnt{color:var(--red)}
+.inv .sub{font-size:13px;color:var(--chalk)}
+.seg{display:flex;gap:6px;margin-top:6px}
+.seg button{flex:1}
+.tab[aria-selected="true"]{color:var(--white);border-bottom-color:var(--red)}
+main{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;scroll-behavior:smooth}
+main::-webkit-scrollbar{display:none}
+main>section{flex:none;width:100%;scroll-snap-align:start;overflow-y:auto;padding:14px var(--pad) calc(env(safe-area-inset-bottom) + 90px)}
+
+.muted{color:var(--chalk)} .small{font-size:13px}
+.err{background:#2a0a0c;border:1px solid var(--red);border-radius:10px;padding:12px;margin:8px 0;font-size:14px}
+.empty{color:var(--chalk);padding:28px 4px;text-align:center}
+
+/* slots */
+.slot{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin:0 0 14px}
+.slot.now{border-left-color:var(--gold)}
+.slot.past{opacity:.55}
+.slot summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:baseline}
+.slot summary::-webkit-details-marker{display:none}
+.time{font:600 15px/1.2 'Barlow Condensed',sans-serif;color:var(--chalk);min-width:88px}
+.slot.now .time{color:var(--gold)}
+.cls{font:700 20px/1.15 'Barlow Condensed',sans-serif}
+.badge{font:600 12px/1 Inter,sans-serif;border-radius:4px;padding:3px 6px;border:1px solid var(--line);color:var(--chalk);white-space:nowrap}
+.badge.nogi{border-color:var(--gold);color:var(--gold)}
+.badge.gi{color:var(--white)}
+.coach{grid-column:2/4;font-size:13px;color:var(--chalk)}
+.slot .inner{padding:10px 0 4px}
+.box{background:var(--card);border-radius:12px;padding:14px;margin:0 0 10px}
+.box h3{font-size:19px;margin-bottom:6px}
+.kv{margin:10px 0 0}
+.kv dt{font-size:12px;color:var(--chalk);margin-top:10px}
+.kv dd{margin:2px 0 0;white-space:pre-wrap}
+.warn{border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 11px;font-size:13px;cursor:pointer;color:var(--chalk)}
+.chip[aria-pressed="true"]{border-color:var(--white);color:var(--white)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:15px;cursor:pointer;background:var(--raise)}
+.btn.red{background:var(--red)}
+.btn.gold{background:var(--gold);color:#000}
+.btn:disabled{opacity:.5}
+.list li{margin:3px 0}
+
+/* curriculum */
+.progs{display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
+.progs::-webkit-scrollbar{display:none}
+.lessons{list-style:none;padding:0;margin:0}
+.lessons button{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:12px 2px;display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:baseline;cursor:pointer}
+.lessons .k{font:600 15px/1 'Barlow Condensed',sans-serif;color:var(--chalk)}
+.lessons .running .k,.lessons .running .t{color:var(--gold)}
+.lessons .blank .t{color:var(--chalk)}
+.grouphead{font:600 15px/1 'Barlow Condensed',sans-serif;color:var(--chalk);margin:18px 0 4px}
+
+/* sheet overlay */
+.sheet{position:fixed;inset:0;background:var(--ink);z-index:20;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .22s ease}
+.sheet.open{transform:none}
+.sheet header{display:flex;align-items:flex-start;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.sheet header .grow{flex:1}
+.sheet h2{font-size:26px;line-height:1.1}
+.sheet .scroll{flex:1;overflow-y:auto;padding:14px var(--pad) calc(env(safe-area-inset-bottom) + 40px)}
+.close{background:var(--raise);border:0;border-radius:999px;width:36px;height:36px;font-size:20px;cursor:pointer;flex:none}
+.block{margin:0 0 16px}
+.block .bh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.block .bh h3{font-size:20px}
+.mins{font:600 14px/1 'Barlow Condensed',sans-serif;color:var(--chalk)}
+.tech{background:var(--card);border-radius:12px;padding:14px}
+.tech .f{margin-top:10px}
+.tech .f b{display:block;font-size:12px;font-weight:600;color:var(--chalk)}
+.tech .f p{margin:2px 0 0;white-space:pre-wrap}
+.tech .f.mistakes{border-left:3px solid var(--red);padding-left:10px}
+.note{font-size:13px;color:var(--chalk);border:1px dashed var(--line);border-radius:10px;padding:10px;margin-bottom:14px}
+.pager{display:flex;justify-content:space-between;gap:8px;margin-top:20px}
+
+/* forms */
+label{display:block;font-size:13px;color:var(--chalk);margin:12px 0 4px}
+input,select,textarea{width:100%;background:var(--card);border:1px solid var(--line);color:var(--white);border-radius:10px;padding:11px 12px;font:16px Inter,sans-serif}
+textarea{min-height:70px}
+.tot{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:6px 0 14px}
+.tot .n{font:700 20px/1 'Barlow Condensed',sans-serif;text-align:right}
+.entry{border-bottom:1px solid var(--line);padding:10px 0}
+.entry .top{display:flex;justify-content:space-between;gap:10px}
+.st{font-size:12px;font-weight:600}
+.st.pending{color:var(--gold)} .st.approved{color:var(--ok)}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translateX(-50%);background:var(--white);color:#000;border-radius:10px;padding:10px 16px;font-weight:600;z-index:40;display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Spartan <span>Coach</span></h1><div class="stamp" id="stamp"></div></div>
+  <div class="week">
+    <button class="arrow" id="prevWeek" aria-label="Previous week">‹</button>
+    <div class="days" id="days"></div>
+    <button class="arrow" id="nextWeek" aria-label="Next week">›</button>
+  </div>
+</header>
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-pane="0">Today</button>
+  <button class="tab" role="tab" aria-selected="false" data-pane="1">Curriculum</button>
+  <button class="tab" role="tab" aria-selected="false" data-pane="2">Pay</button>
+  <button class="tab" role="tab" aria-selected="false" data-pane="3">Members<span class="dot" id="memDot" hidden></span></button>
+  <button class="tab" role="tab" aria-selected="false" data-pane="4">Stock<span class="dot" id="invDot" hidden></span></button>
+</nav>
+<main id="main">
+  <section id="pane-day"></section>
+  <section id="pane-cur"></section>
+  <section id="pane-hours"></section>
+  <section id="pane-mem"></section>
+  <section id="pane-inv"></section>
+</main>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <header><div class="grow" id="sheetHead"></div><button class="close" id="sheetClose" aria-label="Close">×</button></header>
+  <div class="scroll" id="sheetBody"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromIso = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const mondayOf = d => addDays(d, -((d.getDay()+6)%7));
+const DN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+const me = { email:'', name:'', admin:false, approver:false };
+const state = { date: iso(new Date()), today: iso(new Date()), program: localStorage.getItem('spartan-program') || '', programs: null, hoursAll:false, hoursBase:null };
+
+const tokenStore = {
+  get() { try { return localStorage.getItem('spartan-token') || ''; } catch { return ''; } },
+  set(t) { try { t ? localStorage.setItem('spartan-token', t) : localStorage.removeItem('spartan-token'); } catch {} },
+};
+async function api(url, body) {
+  const headers = { Authorization: 'Bearer ' + tokenStore.get() };
+  if (body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(url, body ? { method:'POST', headers, body: JSON.stringify(body) } : { headers });
+  const data = await res.json().catch(() => ({ error: 'The server sent back something unreadable.' }));
+  if (res.status === 401 && data.signin) { tokenStore.set(''); intake(data.error); throw new Error(data.error); }
+  if (!res.ok || data.error) throw new Error(data.error || res.statusText);
+  return data;
+}
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2200); }
+const errBox = e => `<div class="err">${esc(e.message || e)}</div>`;
+
+/* ---------- week strip */
+function renderDays() {
+  const mon = mondayOf(fromIso(state.date));
+  $('#days').innerHTML = [0,1,2,3,4,5].map(i => {
+    const d = addDays(mon, i), k = iso(d);
+    return `<button class="day ${k===state.today?'today':''}" aria-pressed="${k===state.date}" data-date="${k}">${DN[d.getDay()]} ${d.getDate()}</button>`;
+  }).join('');
+  $('#days [aria-pressed="true"]')?.scrollIntoView({ inline:'center', block:'nearest' });
+}
+$('#days').addEventListener('click', e => { const b = e.target.closest('.day'); if (b) { state.date = b.dataset.date; renderDays(); loadDay(); }});
+$('#prevWeek').onclick = () => { state.date = iso(addDays(fromIso(state.date), -7)); renderDays(); loadDay(); };
+$('#nextWeek').onclick = () => { state.date = iso(addDays(fromIso(state.date), 7)); renderDays(); loadDay(); };
+
+/* ---------- tabs <-> swipe */
+const main = $('#main'), tabs = [...document.querySelectorAll('.tab')];
+tabs.forEach(t => t.onclick = () => main.scrollTo({ left: main.clientWidth * +t.dataset.pane }));
+main.addEventListener('scroll', () => {
+  const i = Math.round(main.scrollLeft / main.clientWidth);
+  tabs.forEach((t, j) => t.setAttribute('aria-selected', i === j));
+}, { passive:true });
+
+/* ---------- today */
+async function loadDay() {
+  const el = $('#pane-day');
+  el.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const d = await api(`/api/day?date=${state.date}`);
+    state.today = d.today; renderDays();
+    const banner = state.flagged ? `<button class="flagbar" id="toMembers"><b>${state.flagged} member${state.flagged>1?'s':''} coming up for renewal.</b> Reach out before their anniversary.</button>` : '';
+    if (!d.slots.length) { el.innerHTML = banner + `<div class="empty">No classes on the schedule for ${esc(d.day)}.</div>`; return; }
+    const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+    const toMin = s => { const [h,m] = s.split(':').map(Number); return h*60+m; };
+    el.innerHTML = banner + d.slots.map((s, i) => {
+      const isToday = d.date === d.today;
+      const now = isToday && nowMin >= toMin(s.start) - 30 && nowMin < toMin(s.end);
+      const past = isToday && nowMin >= toMin(s.end);
+      const gi = s.gi ? `<span class="badge ${s.gi==='No-Gi'?'nogi':'gi'}">${esc(s.gi)}</span>` : '<span></span>';
+      return `<details class="slot ${now?'now':''} ${past?'past':''}" ${now?'open':''}>
+        <summary><span class="time">${esc(s.time)}</span><span class="cls">${esc(s.className)}</span>${gi}
+        ${s.coach ? `<span class="coach">${esc(s.coach)}</span>` : ''}</summary>
+        <div class="inner">${s.content.map(renderContent).join('') || '<p class="muted small">No curriculum attached to this class.</p>'}
+          <div class="row"><button class="btn" data-log='${esc(JSON.stringify({ date:d.date, detail:`${s.className}, ${s.time}`, hours:s.hours }))}'>Log this class</button>
+            <button class="btn" data-claim='${esc(JSON.stringify({ row:s.row, start:s.start, className:s.className }))}'>${mine(s.coach) ? 'Remove me' : 'I coach this class'}</button></div>
+        </div></details>`;
+    }).join('');
+  } catch (e) { el.innerHTML = errBox(e); }
+}
+function renderContent(c) {
+  if (c.kind === 'workout') {
+    const w = c.workout;
+    if (!w) return '';
+    if (w.error) return `<div class="box"><h3>Conditioning</h3><p class="muted small">${esc(w.error)}</p></div>`;
+    if (w.pending) return `<div class="box"><h3>Conditioning</h3><p class="muted small">Not confirmed yet. Status in the sheet: ${esc(w.status)}.</p></div>`;
+    const f = w.fields, order = ['Warm-Up','Main Workout / Flow','Finisher','Coaching Cues','Equipment Needed','Coach Notes / Edits'];
+    return `<div class="box"><h3>${esc(f['Workout Name'] || 'Conditioning')}</h3><dl class="kv">${
+      order.filter(k => f[k]).map(k => `<dt>${esc(k)}</dt><dd>${esc(f[k])}</dd>`).join('')}</dl></div>`;
+  }
+  if (c.missing) return `<div class="box"><p class="muted small">No lessons found for ${esc(c.program)}.</p></div>`;
+  const sib = c.siblings && c.siblings.length > 1 ? `<div class="chips">${c.siblings.map(x =>
+    `<button class="chip" aria-pressed="${x.key===c.key}" data-open="${esc(c.program)}|${esc(x.key)}">${esc(sibLabel(x))}</button>`).join('')}</div>` : '';
+  const gi = c.giTechniques && c.giTechniques.length
+    ? `<div class="warn">No-gi class. These need the gi: ${esc(c.giTechniques.join(', '))}.</div>` : '';
+  return `<div class="box"><p class="muted small">${esc(c.program)} · ${esc(keyLabel(c))}</p>
+    <h3>${esc(c.title)}</h3>
+    ${c.techniques.length ? `<ul class="list small">${c.techniques.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+    ${gi}${sib}
+    <div class="row"><button class="btn red" data-open="${esc(c.program)}|${esc(c.key)}">Open lesson</button></div></div>`;
+}
+const mine = coach => String(coach || '').split(',').some(n => n.trim().toLowerCase() === me.name.toLowerCase());
+const sibLabel = x => x.group ? `${x.group} L${x.day}` : x.day ? `Day ${x.day}` : x.key;
+const keyLabel = l => l.week ? `Week ${l.week}${l.group ? ', ' + l.group : ''}${l.day ? (l.group ? ' L' : ', Day ') + l.day : ''}` : `Lesson ${l.key}`;
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#toMembers')) { main.scrollTo({ left: main.clientWidth * 3 }); return; }
+  const o = e.target.closest('[data-open]');
+  if (o) { const [p, k] = o.dataset.open.split('|'); openLesson(p, k); return; }
+  const l = e.target.closest('[data-log]');
+  if (l) { openLog(JSON.parse(l.dataset.log)); return; }
+  const c = e.target.closest('[data-claim]');
+  if (c) {
+    c.disabled = true;
+    api('/api/claim', JSON.parse(c.dataset.claim))
+      .then(r => { toast(mine(r.coach) ? 'Added to this class' : 'Removed from this class'); loadDay(); })
+      .catch(err => { c.disabled = false; toast(err.message); });
+  }
+});
+
+/* ---------- lesson sheet */
+const sheet = $('#sheet');
+$('#sheetClose').onclick = () => sheet.classList.remove('open');
+async function openLesson(program, key) {
+  sheet.classList.add('open');
+  $('#sheetHead').innerHTML = `<p class="muted small">${esc(program)}</p><h2>Loading…</h2>`;
+  $('#sheetBody').innerHTML = '';
+  try {
+    const l = await api(`/api/lesson?program=${encodeURIComponent(program)}&key=${encodeURIComponent(key)}`);
+    const total = l.blocks.reduce((n, b) => n + (/^\d+$/.test(b.minutes) ? +b.minutes : 0), 0);
+    $('#sheetHead').innerHTML = `<p class="muted small">${esc(program)} · ${esc(keyLabel(l))}${total ? ` · ${total} min planned` : ''}</p><h2>${esc(l.title)}</h2>`;
+    const running = (state.programs || []).find(p => p.name === program)?.pointer === key;
+    $('#sheetBody').innerHTML =
+      (l.note ? `<div class="note">${esc(l.note)}</div>` : '') +
+      (l.blocks.length ? l.blocks.map(renderBlock).join('') : '<div class="empty">This lesson has no content in the curriculum sheet yet.</div>') +
+      `<div class="pager">
+        <button class="btn" ${l.prev ? `data-open="${esc(program)}|${esc(l.prev)}"` : 'disabled'}>Previous</button>
+        ${me.admin ? `<button class="btn gold" id="setRunning" ${running ? 'disabled' : ''}>${running ? 'Now running' : 'Set as now running'}</button>` : ''}
+        <button class="btn" ${l.next ? `data-open="${esc(program)}|${esc(l.next)}"` : 'disabled'}>Next</button>
+      </div>`;
+    $('#sheetBody').scrollTop = 0;
+    const b = $('#setRunning');
+    if (b) b.onclick = async () => {
+      b.disabled = true;
+      try { await api('/api/pointer', { program, key }); toast('Set as now running'); b.textContent = 'Now running'; await loadPrograms(); loadDay(); }
+      catch (e) { b.disabled = false; toast(e.message); }
+    };
+  } catch (e) { $('#sheetBody').innerHTML = errBox(e); }
+}
+function renderBlock(b) {
+  const mins = b.minutes ? `<span class="mins">${esc(b.minutes)} min</span>` : '';
+  if (b.type === 'technique' || b.type === 'round') {
+    const f = (k, lab) => b[k] ? `<div class="f ${k}"><b>${lab}</b><p>${esc(b[k])}</p></div>` : '';
+    return `<div class="block tech"><div class="bh"><h3>${esc(b.title)}</h3>${mins}</div>
+      ${b.gi === 'Gi' ? '<span class="badge gi">Gi</span>' : ''}
+      ${f('preview','Preview')}${f('explain','Explain')}${f('mistakes','Mistakes')}${f('demonstrate','Demonstrate')}
+      ${b.involve && !/^(involve)?\s*\(?q\s*&?\s*n?\s*a\)?\.?$/i.test(b.involve) ? f('involve','Involve') : ''}
+      ${b.body ? `<div class="f"><p>${esc(b.body)}</p></div>` : ''}</div>`;
+  }
+  if (!b.body && b.type === 'section' && !mins) return `<p class="muted small">${esc(b.title)}</p>`;
+  return `<div class="block"><div class="bh"><h3>${esc(b.title)}</h3>${mins}</div>${b.body ? `<p style="white-space:pre-wrap;margin:4px 0 0">${esc(b.body)}</p>` : ''}</div>`;
+}
+
+/* ---------- curriculum pane */
+async function loadPrograms() {
+  const d = await api('/api/programs');
+  state.programs = d.programs;
+  if (!state.program || !d.programs.some(p => p.name === state.program)) state.program = d.programs[0]?.name || '';
+  renderCurriculum();
+}
+function renderCurriculum() {
+  const el = $('#pane-cur');
+  const p = state.programs.find(x => x.name === state.program);
+  let groups = [], last = null;
+  for (const l of p.lessons) {
+    const g = l.week ? `Week ${l.week}` : '';
+    if (g !== last) { groups.push({ head: g, items: [] }); last = g; }
+    groups[groups.length - 1].items.push(l);
+  }
+  el.innerHTML = `<div class="progs">${state.programs.map(x =>
+      `<button class="chip" aria-pressed="${x.name===state.program}" data-prog="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</div>
+    ${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}
+    ${groups.map(g => `${g.head ? `<div class="grouphead">${esc(g.head)}</div>` : ''}<ul class="lessons">${g.items.map(l =>
+      `<li class="${l.key===p.pointer?'running':''} ${l.empty?'blank':''}"><button data-open="${esc(p.name)}|${esc(l.key)}">
+        <span class="k">${esc(l.group ? `${l.group.split(' ')[0]} L${l.day}` : l.week ? `Day ${l.day}` : l.key)}</span>
+        <span class="t">${esc(l.title)}</span><span class="small muted">${l.key===p.pointer ? 'Now running' : l.empty ? 'Empty' : ''}</span>
+      </button></li>`).join('')}</ul>`).join('')}`;
+}
+$('#pane-cur').addEventListener('click', e => {
+  const b = e.target.closest('[data-prog]');
+  if (b) { state.program = b.dataset.prog; localStorage.setItem('spartan-program', state.program); renderCurriculum(); }
+});
+
+/* ---------- hours */
+async function loadHours() {
+  const el = $('#pane-hours');
+  try {
+    const q = new URLSearchParams({ email: me.email, date: state.hoursBase || state.today, all: state.hoursAll ? '1' : '0' });
+    const [d, s] = await Promise.all([api(`/api/hours?${q}`), api(`/api/sales?${q}`)]);
+    state.saleRules = s.rules;
+    const fmt = x => { const y = fromIso(x); return `${DN[y.getDay()]} ${y.getMonth()+1}/${y.getDate()}`; };
+    const $$ = n => '$' + Number(n || 0).toFixed(2);
+    const people = [...new Set([...Object.keys(d.totals), ...Object.keys(s.totals)])];
+    const stat = st => `<span class="st ${/approved/i.test(st)?'approved':/rejected/i.test(st)?'':'pending'}">${esc(st)}</span>`;
+    el.innerHTML = `
+      <div class="row" style="margin-top:0"><button class="btn red" id="newHours">Log hours</button><button class="btn red" id="newSale">Log sale</button>
+        ${me.approver ? `<button class="chip" aria-pressed="${state.hoursAll}" id="allToggle">All staff</button>` : ''}</div>
+      <div class="week" style="padding:16px 0 4px"><button class="arrow" data-period="${d.prev}" aria-label="Previous pay period">‹</button>
+        <div class="cond" style="flex:1;text-align:center;font-size:18px">Pay period ${esc(fmt(d.period.from))} – ${esc(fmt(d.period.to))}</div>
+        <button class="arrow" data-period="${d.next}" aria-label="Next pay period">›</button></div>
+      ${people.length ? people.map(p => { const h = d.totals[p] || { total:0, approved:0, byType:{} }, c = s.totals[p] || { commission:0, approved:0, sales:0 };
+        return `<div class="box"><div class="tot">
+          <span>${esc(d.all || s.all ? p : 'Hours')}${d.all || s.all ? ' · hours' : ''}</span><span class="n">${h.total}</span>
+          ${Object.entries(h.byType).map(([k, v]) => `<span class="muted small">${esc(k)}</span><span class="small" style="text-align:right">${v}</span>`).join('')}
+          <span class="muted small">Hours approved</span><span class="small" style="text-align:right">${h.approved}</span>
+          <span style="margin-top:8px">Commission</span><span class="n" style="margin-top:8px">${$$(c.commission)}</span>
+          <span class="muted small">${c.sales} sale${c.sales===1?'':'s'} · approved</span><span class="small" style="text-align:right">${$$(c.approved)}</span></div></div>`; }).join('')
+        : '<div class="empty">Nothing logged in this pay period yet.</div>'}
+      ${d.rows.length ? `<div class="grouphead">Hours</div>` : ''}
+      ${d.rows.map(r => `<div class="entry"><div class="top"><span><b>${esc(fmt(r.date))}</b> · ${esc(r.type)}${d.all ? ` · ${esc(r.coach)}` : ''}</span><span>${esc(r.hours)} h</span></div>
+        <div class="small">${esc(r.detail)}</div>${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ''}
+        <div class="top small" style="margin-top:4px">${stat(r.status)}
+          <span>${me.approver && d.all ? `<button class="chip" data-approve='${esc(JSON.stringify({ row:r.row, logged:r.logged, undo:/approved/i.test(r.status) }))}'>${/approved/i.test(r.status)?'Undo':'Approve'}</button>` : ''}
+          ${(r.mine && !/approved/i.test(r.status)) || me.approver ? `<button class="chip" data-del='${esc(JSON.stringify({ row:r.row, logged:r.logged }))}'>Delete</button>` : ''}</span></div></div>`).join('')}
+      ${s.rows.length ? `<div class="grouphead">Sales</div>` : ''}
+      ${s.rows.map(r => { const k = esc(JSON.stringify({ row:r.row, logged:r.logged }));
+        return `<div class="entry"><div class="top"><span><b>${esc(fmt(r.date))}</b> · ${esc(r.type)}${s.all ? ` · ${esc(r.staff)}` : ''}</span><span>${$$(r.commission)}</span></div>
+        <div class="small">${esc(r.item)} · sale ${$$(r.amount)}</div>${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ''}
+        <div class="top small" style="margin-top:4px">${stat(r.status)}
+          <span>${me.approver && s.all ? (/pending/i.test(r.status)
+              ? `<button class="chip" data-review='${k}' data-act="approve">Approve</button><button class="chip" data-review='${k}' data-act="reject">Reject</button>`
+              : `<button class="chip" data-review='${k}' data-act="undo">Undo</button>`) : ''}
+          ${(r.mine && /pending/i.test(r.status)) || me.approver ? `<button class="chip" data-sdel='${k}'>Delete</button>` : ''}</span></div></div>`; }).join('')}
+      ${me.approver && !state.hoursAll ? '<p class="muted small">Turn on All staff to approve hours and sales. Check each sale against Zen Planner before approving it.</p>' : ''}`;
+  } catch (e) { el.innerHTML = errBox(e); }
+}
+function openSale() {
+  const rules = state.saleRules || [];
+  sheet.classList.add('open');
+  $('#sheetHead').innerHTML = '<h2>Log a sale</h2><p class="muted small">Your commission is added once a manager checks it against Zen Planner.</p>';
+  $('#sheetBody').innerHTML = `
+    <label for="sDate">Date</label><input id="sDate" type="date" value="${esc(state.today)}">
+    <label for="sType">What kind of sale</label><select id="sType">${rules.map(r => `<option value="${esc(r.type)}">${esc(r.type)}</option>`).join('')}</select>
+    <label for="sItem" id="sItemLab">What sold</label><input id="sItem" placeholder="e.g. Spartan Gi A2">
+    <label for="sAmt">Sale amount ($)</label><input id="sAmt" type="number" inputmode="decimal" min="0" step="0.01">
+    <p class="muted small" id="sPreview"></p>
+    <label for="sNote">Note (optional)</label><input id="sNote">
+    <div class="row"><button class="btn red" id="sGo">Log sale</button></div>`;
+  const upd = () => {
+    const r = rules.find(x => x.type === $('#sType').value) || { rate:0, flat:0 };
+    const merch = /merch/i.test(r.type);
+    $('#sItemLab').textContent = merch ? 'What sold' : 'Member name';
+    $('#sItem').placeholder = merch ? 'e.g. Spartan Gi A2' : 'e.g. Jordan M.';
+    const amt = Number($('#sAmt').value) || 0, c = Math.round((amt * r.rate / 100 + r.flat) * 100) / 100;
+    $('#sPreview').textContent = amt ? `Commission: $${c.toFixed(2)}${r.rate ? ` (${r.rate}%${r.flat ? ` + $${r.flat}` : ''})` : r.flat ? ' flat' : ''}` : '';
+  };
+  $('#sType').onchange = upd; $('#sAmt').oninput = upd; upd();
+  $('#sGo').onclick = async () => {
+    const b = $('#sGo'); b.disabled = true;
+    try { const r = await api('/api/sales', { date:$('#sDate').value, type:$('#sType').value, item:$('#sItem').value, amount:$('#sAmt').value, note:$('#sNote').value });
+      sheet.classList.remove('open'); toast(`Logged. $${r.commission.toFixed(2)} pending review.`); loadHours(); }
+    catch (err) { b.disabled = false; toast(err.message); }
+  };
+}
+$('#pane-hours').addEventListener('click', async e => {
+  const t = e.target;
+  if (t.id === 'newHours') return openLog({ date: state.date, detail: '', hours: 1 });
+  if (t.id === 'newSale') return openSale();
+  if (t.dataset.review || t.dataset.sdel) {
+    if (t.dataset.sdel && !confirm('Delete this sale?')) return;
+    t.disabled = true;
+    try {
+      if (t.dataset.review) await api('/api/sales/review', { ...JSON.parse(t.dataset.review), action: t.dataset.act });
+      else await api('/api/sales/delete', JSON.parse(t.dataset.sdel));
+      toast('Updated'); loadHours();
+    } catch (err) { t.disabled = false; toast(err.message); }
+    return;
+  }
+  if (t.id === 'allToggle') { state.hoursAll = !state.hoursAll; return loadHours(); }
+  if (t.dataset.period) { state.hoursBase = t.dataset.period; return loadHours(); }
+  const act = t.dataset.approve ? ['/api/hours/approve', t.dataset.approve, 'Updated'] : t.dataset.del ? ['/api/hours/delete', t.dataset.del, 'Deleted'] : null;
+  if (!act) return;
+  if (t.dataset.del && !confirm('Delete this entry?')) return;
+  t.disabled = true;
+  try { await api(act[0], JSON.parse(act[1])); toast(act[2]); loadHours(); } catch (err) { t.disabled = false; toast(err.message); }
+});
+
+function openLog(pre) {
+  sheet.classList.add('open');
+  $('#sheetHead').innerHTML = `<h2>Log hours</h2>`;
+  $('#sheetBody').innerHTML = `
+    <label for="hDate">Date</label><input id="hDate" type="date" value="${esc(pre.date)}">
+    <label for="hType">Type</label><select id="hType">${['Class','Private Lesson','Competition Coaching','Other'].map(t => `<option ${t===(pre.detail?'Class':'')?'selected':''}>${t}</option>`).join('')}</select>
+    <label for="hDetail">Class, student or event</label><input id="hDetail" value="${esc(pre.detail)}" placeholder="e.g. Private with Jordan M., or Fight team corner">
+    <label for="hHours">Hours</label><input id="hHours" type="number" min="0.25" max="12" step="0.25" value="${esc(pre.hours)}">
+    <label for="hNote">Note (optional)</label><textarea id="hNote"></textarea>
+    <div class="row"><button class="btn red" id="hSave">Log hours</button></div>`;
+  $('#hSave').onclick = async () => {
+    const b = $('#hSave'); b.disabled = true;
+    try {
+      await api('/api/hours', { date: $('#hDate').value, type: $('#hType').value, detail: $('#hDetail').value, hours: $('#hHours').value, note: $('#hNote').value });
+      sheet.classList.remove('open'); toast('Hours logged'); loadHours();
+    } catch (e) { b.disabled = false; toast(e.message); }
+  };
+}
+
+
+/* ---------- members */
+const fmtD = s => { if (!/^\d{4}-\d{2}-\d{2}$/.test(s||'')) return s || ''; const x = fromIso(s); return `${x.getMonth()+1}/${x.getDate()}/${String(x.getFullYear()).slice(2)}`; };
+async function loadMembers() {
+  const el = $('#pane-mem');
+  try {
+    const d = await api(`/api/members?email=${encodeURIComponent(me.email)}`);
+    state.flagged = d.flagged; state.memberCoaches = d.coaches;
+    $('#memDot').hidden = !d.flagged;
+    const r = await api(`/api/retention?email=${encodeURIComponent(me.email)}`);
+    const ret = r.coaches.length ? `<div class="box"><h3>Retention ${esc(r.year)}</h3><div class="tot">${r.coaches.map(c =>
+        `<span>${esc(c.coach)}</span><span class="n">${c.renewed}</span><span class="muted small">${c.lapsed} lapsed${c.rate!=null?` · ${c.rate}% kept`:''}</span><span class="small" style="text-align:right">${c.bonus!=null?'$'+c.bonus:''}</span>`).join('')}</div>
+        ${r.bonusPerRenewal ? '' : '<p class="muted small">Renewal counts only. Bonus amounts appear once the owner sets bonus_per_renewal in Settings.</p>'}</div>` : '';
+    el.innerHTML = `${d.canManage ? '<div class="row" style="margin-top:0"><button class="btn red" id="addMember">Add member</button></div>' : ''}
+      ${ret}
+      <p class="muted small" style="margin:14px 0 0">${d.all ? 'All members' : 'Members signed up under you'} · soonest anniversary first</p>
+      ${d.members.length ? d.members.map(m => {
+        const when = m.problem ? `<span class="when flag">${esc(m.problem)}</span>`
+          : m.outcome ? `<span class="when ${m.outcome==='Renewed'?'ok':''}">${esc(m.outcome)}</span>`
+          : /lapsed|cancel/i.test(m.status) ? `<span class="when">${esc(m.status)}</span>`
+          : `<span class="when ${m.flagged?'flag':''}">${m.daysUntil < 0 ? `${-m.daysUntil}d past` : m.daysUntil === 0 ? 'Today' : `${m.daysUntil}d`}</span>`;
+        const key = esc(JSON.stringify({ row:m.row, name:m.name }));
+        return `<div class="mem"><div class="top"><span class="nm">${esc(m.name)}</span>${when}</div>
+          <div class="small muted">Anniversary ${esc(fmtD(m.anniversary))}${m.cycle>1?` (year ${m.cycle})`:''} · joined ${esc(fmtD(m.joined))}${m.plan?' · '+esc(m.plan):''}${d.all?' · '+esc(m.coach||'no coach'):''}</div>
+          ${m.lastContacted ? `<div class="small">Last contacted ${esc(fmtD(m.lastContacted))}</div>` : ''}
+          ${m.notes ? `<div class="small muted" style="white-space:pre-wrap">${esc(m.notes.split('\n').slice(-2).join('\n'))}</div>` : ''}
+          <div class="row" style="margin-top:8px"><button class="chip" data-contact='${key}'>Log contact</button>
+          ${d.canManage && !m.outcome && !m.problem ? `<button class="chip" data-renew='${key}' data-out="Renewed">Renewed</button><button class="chip" data-renew='${key}' data-out="Lapsed">Lapsed</button>` : ''}</div></div>`;
+      }).join('') : `<div class="empty">${d.all ? 'No members entered yet. Add them here or in the Members tab of the Ops sheet.' : 'No members are assigned to you yet.'}</div>`}`;
+  } catch (e) { el.innerHTML = errBox(e); }
+}
+$('#pane-mem').addEventListener('click', async e => {
+  const t = e.target;
+  if (t.id === 'addMember') return openMemberForm();
+  if (t.dataset.contact) {
+    const note = prompt('What happened? (optional)') ;
+    if (note === null) return;
+    t.disabled = true;
+    try { await api('/api/members/contact', { ...JSON.parse(t.dataset.contact), note }); toast('Contact logged'); loadMembers(); }
+    catch (err) { t.disabled = false; toast(err.message); }
+  }
+  if (t.dataset.renew) {
+    const m = JSON.parse(t.dataset.renew);
+    if (!confirm(`Record ${m.name} as ${t.dataset.out} for this anniversary?`)) return;
+    t.disabled = true;
+    try { await api('/api/renewals', { ...m, outcome: t.dataset.out }); toast('Recorded'); loadMembers(); }
+    catch (err) { t.disabled = false; toast(err.message); }
+  }
+});
+function openMemberForm() {
+  sheet.classList.add('open');
+  $('#sheetHead').innerHTML = '<h2>Add member</h2>';
+  $('#sheetBody').innerHTML = `
+    <label for="mName">Member name</label><input id="mName">
+    <label for="mJoined">Joined</label><input id="mJoined" type="date" value="${esc(state.today)}">
+    <label for="mTerm">Term</label><select id="mTerm"><option value="12">12 months</option><option value="6">6 months</option><option value="3">3 months</option><option value="1">Month to month</option></select>
+    <label for="mPlan">Plan (optional)</label><input id="mPlan" placeholder="e.g. Spartan Athlete">
+    <label for="mCoach">Signed up by</label><select id="mCoach"><option value="">No coach</option>${(state.memberCoaches||[]).map(c => `<option>${esc(c)}</option>`).join('')}</select>
+    <div class="row"><button class="btn red" id="mSave">Add member</button></div>`;
+  $('#mSave').onclick = async () => {
+    const b = $('#mSave'); b.disabled = true;
+    try { await api('/api/members', { name:$('#mName').value, joined:$('#mJoined').value, term:$('#mTerm').value, plan:$('#mPlan').value, coach:$('#mCoach').value });
+      sheet.classList.remove('open'); toast('Member added'); loadMembers(); }
+    catch (err) { b.disabled = false; toast(err.message); }
+  };
+}
+
+/* ---------- inventory */
+async function loadInventory() {
+  const el = $('#pane-inv');
+  try {
+    const d = await api(`/api/inventory?email=${encodeURIComponent(me.email)}`);
+    $('#invDot').hidden = !d.low;
+    state.canEditInv = d.canEdit;
+    el.innerHTML = `${d.canEdit ? '<div class="row" style="margin-top:0"><button class="btn red" id="addItem">Add item</button></div>' : ''}
+      ${d.low ? `<div class="warn">${d.low} item${d.low>1?'s are':' is'} at or below the reorder point.</div>` : ''}
+      ${d.items.length ? d.items.map(i => `<div class="inv ${i.low?'low':''}" ${d.canEdit ? `data-item='${esc(JSON.stringify({ row:i.row, key:`${i.item}|${i.variant}`, label:`${i.item}${i.variant?' · '+i.variant:''}`, onHand:i.onHand }))}' role="button" tabindex="0"` : ''}>
+          <div><b>${esc(i.item)}</b>${i.variant ? ` · ${esc(i.variant)}` : ''}
+            <div class="sub">${i.reorderAt!=null ? `Reorder at ${i.reorderAt}` : 'No reorder point'}${i.leadDays ? ` · ${esc(i.leadDays)}-day lead` : ''}${i.lastCounted ? ` · counted ${esc(fmtD(i.lastCounted))}` : ''}</div></div>
+          <div class="cnt">${i.onHand}</div></div>`).join('')
+        : '<div class="empty">No inventory yet. Add items here or in the Inventory tab of the Ops sheet, one row per size and color.</div>'}
+      ${d.canEdit && d.items.length ? '<p class="muted small">Tap an item to count, restock or record a sale.</p>' : ''}`;
+  } catch (e) { el.innerHTML = errBox(e); }
+}
+$('#pane-inv').addEventListener('click', e => {
+  if (e.target.id === 'addItem') return openItemForm();
+  const it = e.target.closest('[data-item]');
+  if (it) openStockForm(JSON.parse(it.dataset.item));
+});
+function openStockForm(i) {
+  sheet.classList.add('open');
+  $('#sheetHead').innerHTML = `<p class="muted small">On hand: ${i.onHand}</p><h2>${esc(i.label)}</h2>`;
+  $('#sheetBody').innerHTML = `
+    <label>What happened</label>
+    <div class="seg" id="kinds">${[['Count','Counted'],['Restock','Restocked'],['Sold','Sold'],['Adjust','Lost / damaged']].map(([k,l],n) =>
+      `<button class="chip" aria-pressed="${n===0}" data-kind="${k}">${l}</button>`).join('')}</div>
+    <label for="sQty" id="sQtyLab">How many are on the shelf?</label><input id="sQty" type="number" inputmode="numeric" min="0" step="1">
+    <label for="sNote">Note (optional)</label><input id="sNote">
+    <div class="row"><button class="btn red" id="sSave">Save</button></div>`;
+  let kind = 'Count';
+  const labs = { Count:'How many are on the shelf?', Restock:'How many arrived?', Sold:'How many sold?', Adjust:'How many to remove?' };
+  $('#kinds').onclick = e => { const b = e.target.closest('[data-kind]'); if (!b) return; kind = b.dataset.kind;
+    [...$('#kinds').children].forEach(x => x.setAttribute('aria-pressed', x === b)); $('#sQtyLab').textContent = labs[kind]; };
+  $('#sSave').onclick = async () => {
+    const b = $('#sSave'); b.disabled = true;
+    try { const r = await api('/api/inventory/change', { row:i.row, key:i.key, kind, qty: Number($('#sQty').value), note:$('#sNote').value });
+      sheet.classList.remove('open'); toast(r.low ? `Saved. ${r.onHand} left, time to reorder.` : `Saved. ${r.onHand} on hand.`); loadInventory(); }
+    catch (err) { b.disabled = false; toast(err.message); }
+  };
+}
+function openItemForm() {
+  sheet.classList.add('open');
+  $('#sheetHead').innerHTML = '<h2>Add item</h2><p class="muted small">One entry per size or color.</p>';
+  $('#sheetBody').innerHTML = `
+    <label for="iItem">Item</label><input id="iItem" placeholder="e.g. Spartan Gi (white)">
+    <label for="iVar">Size / color</label><input id="iVar" placeholder="e.g. A2">
+    <label for="iCat">Category</label><input id="iCat" placeholder="Gis, Gloves, Shin guards, Apparel">
+    <label for="iOn">On hand now</label><input id="iOn" type="number" inputmode="numeric" min="0">
+    <label for="iRe">Reorder when it hits</label><input id="iRe" type="number" inputmode="numeric" min="0">
+    <label for="iLead">Days an order takes to arrive</label><input id="iLead" type="number" inputmode="numeric" min="0">
+    <label for="iZen">Name in Zen Planner (for syncing later)</label><input id="iZen">
+    <div class="row"><button class="btn red" id="iSave">Add item</button></div>`;
+  $('#iSave').onclick = async () => {
+    const b = $('#iSave'); b.disabled = true;
+    try { await api('/api/inventory/item', { item:$('#iItem').value, variant:$('#iVar').value, category:$('#iCat').value, onHand:$('#iOn').value, reorderAt:$('#iRe').value, leadDays:$('#iLead').value, zenName:$('#iZen').value });
+      sheet.classList.remove('open'); toast('Item added'); loadInventory(); }
+    catch (err) { b.disabled = false; toast(err.message); }
+  };
+}
+
+/* ---------- sign in */
+async function post(url, body) {
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({ error: 'The server sent back something unreadable.' }));
+  if (!r.ok || d.error) { const e = new Error(d.error || r.statusText); e.data = d; throw e; }
+  return d;
+}
+function intake(msg, step = 'email', email = '', needsName = false) {
+  sheet.classList.add('open');
+  $('#sheetClose').style.display = 'none';
+  $('#sheetHead').innerHTML = `<h2>Sign in to Spartan Coach</h2><p class="muted small">${step === 'email'
+    ? 'Use the email the gym has on file for you. We\'ll send you a code.'
+    : `We sent a 6-digit code to ${esc(email)}. It can take a minute; check spam too.`}</p>`;
+  $('#sheetBody').innerHTML = `${msg ? errBox(msg) : ''}` + (step === 'email'
+    ? `<label for="iEmail">Email</label><input id="iEmail" type="email" autocomplete="email" inputmode="email" value="${esc(email)}">
+       <div class="row"><button class="btn red" id="iGo">Send code</button></div>`
+    : `<label for="iCode">Code</label><input id="iCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="font-size:24px;letter-spacing:.3em">
+       ${needsName ? `<label for="iName">Your name, the way it should show on the schedule</label><input id="iName" autocomplete="name" placeholder="e.g. Tyler S.">` : ''}
+       <div class="row"><button class="btn red" id="iGo">Sign in</button><button class="btn" id="iBack">Use a different email</button></div>`);
+  const go = $('#iGo');
+  if (step === 'email') {
+    go.onclick = async () => {
+      const em = $('#iEmail').value.trim().toLowerCase();
+      go.disabled = true;
+      try { const d = await post('/api/login/start', { email: em }); intake('', 'code', em, d.needsName); }
+      catch (e) { intake(e, 'email', em); }
+    };
+  } else {
+    $('#iBack').onclick = () => intake('', 'email', email);
+    go.onclick = async () => {
+      go.disabled = true;
+      try {
+        const d = await post('/api/login/verify', { email, code: $('#iCode').value, name: needsName ? $('#iName').value : '' });
+        tokenStore.set(d.token);
+        Object.assign(me, d.me);
+        $('#sheetClose').style.display = ''; sheet.classList.remove('open');
+        start();
+      } catch (e) { intake(e, 'code', email, needsName || !!(e.data && e.data.needsName)); }
+    };
+  }
+}
+
+async function start() {
+  $('#stamp').textContent = me.name;
+  renderDays();
+  await loadMembers();
+  loadDay();
+  loadInventory();
+  loadPrograms().catch(e => $('#pane-cur').innerHTML = errBox(e));
+  loadHours();
+}
+
+(async () => {
+  if (!tokenStore.get()) return intake();
+  try {
+    Object.assign(me, await api('/api/whoami'));
+    start();
+  } catch (e) { if (tokenStore.get()) $('#pane-day').innerHTML = errBox(e); }
+})();
+</script>
+</body>
+</html>
