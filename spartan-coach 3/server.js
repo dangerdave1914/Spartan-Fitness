@@ -113,10 +113,15 @@ function todayIso() {
 }
 const addDays = (d, n) => new Date(d.getTime() + n * 86400000);
 const mondayOf = d => addDays(d, -((d.getUTCDay() + 6) % 7));
+/** Accepts "17:00", "17:00:00" or "5:00 PM": Sheets may reformat a typed time. */
 function minutesOf(hhmm) {
-  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '');
-  return m ? +m[1] * 60 + +m[2] : null;
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?/i.exec(String(hhmm || '').trim());
+  if (!m) return null;
+  let h = +m[1];
+  if (m[3]) { const pm = /^p/i.test(m[3]); if (h === 12) h = pm ? 12 : 0; else if (pm) h += 12; }
+  return h * 60 + +m[2];
 }
+const hm = v => { const t = minutesOf(v); return t == null ? v : `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; };
 function label(hhmm) {
   const t = minutesOf(hhmm);
   if (t == null) return hhmm || '';
@@ -377,7 +382,7 @@ app.get('/api/day', wrap(async (req, res) => {
     }
     const len = (minutesOf(s.End) ?? 0) - (minutesOf(s.Start) ?? 0);
     out.push({
-      row: s._row, start: s.Start, end: s.End, time: `${label(s.Start)}–${label(s.End)}`, className: s.Class,
+      row: s._row, start: hm(s.Start), end: hm(s.End), time: `${label(s.Start)}–${label(s.End)}`, className: s.Class,
       gi: s.Gi, coach: s.Coach, hours: len > 0 ? Math.round(len / 15) / 4 : 1, content,
     });
   }
@@ -442,7 +447,7 @@ app.post('/api/claim', wrap(async (req, res) => {
   const me = whoami(req.body.email, o);
   if (!me.known) return res.status(403).json({ error: 'Register first.' });
   const s = o.schedule.find(x => x._row === Number(req.body.row));
-  if (!s || s.Start !== req.body.start || s.Class !== req.body.className) {
+  if (!s || hm(s.Start) !== req.body.start || s.Class !== req.body.className) {
     return res.status(409).json({ error: 'The schedule changed. Refresh and try again.' });
   }
   const list = coachList(s.Coach);
@@ -778,7 +783,7 @@ app.get('/api/hours', wrap(async (req, res) => {
   res.json({
     period, prev: iso(prevBase), next: iso(nextBase), all, types: HOUR_TYPES, totals,
     rows: rows.map(r => ({
-      row: r._row, logged: r.Logged, date: r.Date, coach: r.Coach, type: r.Type, detail: r['Class / Detail'],
+      row: r._row, logged: r.Logged, date: r.Date, start: r.Start ? label(hm(r.Start)) : '', coach: r.Coach, type: r.Type, detail: r['Class / Detail'],
       hours: r.Hours, note: r.Note, status: r.Status, approvedBy: r['Approved By'],
       mine: r.Email.toLowerCase() === me.email,
     })),
@@ -791,6 +796,8 @@ app.post('/api/hours', wrap(async (req, res) => {
   if (!me.known) return res.status(403).json({ error: 'Register first.' });
   const { date, type, detail, note } = req.body;
   const hours = Number(req.body.hours);
+  const start = req.body.start ? hm(req.body.start) : '';
+  if (start && !/^\d{2}:\d{2}$/.test(start)) return res.status(400).json({ error: 'Start time isn\'t readable.' });
   if (!parseIso(date)) return res.status(400).json({ error: 'Pick a date.' });
   if (!HOUR_TYPES.includes(type)) return res.status(400).json({ error: 'Pick a type.' });
   if (!(hours > 0 && hours <= 12)) return res.status(400).json({ error: 'Hours must be between 0 and 12.' });
@@ -798,8 +805,9 @@ app.post('/api/hours', wrap(async (req, res) => {
   const logged = new Date().toISOString();
   await rpc({
     sheet: 'ops', action: 'append', tab: 'Hours',
-    row: [logged, date, me.name, me.email, type, String(detail).trim(), hours, String(note || '').trim(), 'Pending', ''],
-    notify: type !== 'Class' ? { subject: `Hours logged: ${me.name}, ${type}`, body: `${date} · ${hours}h · ${detail}\n${note || ''}` } : null,
+    // K = Start (time of day). Older sheets without a Start header still take the row; the time just isn't shown.
+    row: [logged, date, me.name, me.email, type, String(detail).trim(), hours, String(note || '').trim(), 'Pending', '', start],
+    notify: type !== 'Class' ? { subject: `Hours logged: ${me.name}, ${type}`, body: `${date}${start ? ' ' + label(start) : ''} · ${hours}h · ${detail}\n${note || ''}` } : null,
   });
   res.json({ ok: true });
 }));

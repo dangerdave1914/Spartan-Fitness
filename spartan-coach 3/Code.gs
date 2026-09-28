@@ -40,7 +40,7 @@ function sheetId(name) {
 /** Tabs the app writes to. Created on first use if they're missing. */
 const LOGS = {
   Staff:    ['Name', 'Email', 'Role', 'Joined'],
-  Hours:    ['Logged', 'Date', 'Coach', 'Email', 'Type', 'Class / Detail', 'Hours', 'Note', 'Status', 'Approved By'],
+  Hours:    ['Logged', 'Date', 'Coach', 'Email', 'Type', 'Class / Detail', 'Hours', 'Note', 'Status', 'Approved By', 'Start'],
   Settings: ['Key', 'Value', 'Note'],
   Sales:    ['Logged', 'Date', 'Staff', 'Email', 'Type', 'Item / Member', 'Amount', 'Commission', 'Status', 'Approved By', 'Source', 'Note'],
   'Inventory Log': ['Logged', 'Item', 'Variant', 'Type', 'Change', 'On Hand After', 'By', 'Note'],
