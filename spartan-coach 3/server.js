@@ -25,7 +25,7 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 
-const app = express();
+const app = express(); app.use(require('./zp-webhooks'));
 
 /* ---------------------------------------------------------------- Zen Planner webhooks
  * Zen Planner's settings page (Settings → Webhooks) posts to one URL per feed:
