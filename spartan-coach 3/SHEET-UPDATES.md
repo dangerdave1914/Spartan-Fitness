@@ -46,3 +46,8 @@ Add Noah and Drake with Role `Inventory` once their emails are in.
 Paste the new `Code.gs`, then Deploy → Manage deployments → pencil → Version:
 **New version** → Deploy. The test page should say `spartan-build-4`. (This
 lets the bridge create the Zen Planner Log tab with its headers.)
+
+## 5. Payroll menu
+In the Staff Ops sheet: **Extensions → Apps Script**, paste `Payroll.gs`,
+Save, then reload the sheet. A **Spartan Payroll** menu appears. This is a
+different script from the bridge; don't paste it into the bridge project.

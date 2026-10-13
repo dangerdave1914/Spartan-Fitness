@@ -25,7 +25,7 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 
-const app = express(); app.use(require('./zp-webhooks'));
+const app = express();
 
 /* ---------------------------------------------------------------- Zen Planner webhooks
  * Zen Planner's settings page (Settings → Webhooks) posts to one URL per feed:
@@ -765,7 +765,7 @@ app.get('/api/sales', wrap(async (req, res) => {
     const t = totals[r.Staff] = totals[r.Staff] || { commission: 0, approved: 0, sales: 0 };
     const c = Number(r.Commission) || 0;
     t.commission = money(t.commission + c); t.sales++;
-    if (/approved/i.test(r.Status)) t.approved = money(t.approved + c);
+    if (/approved|paid/i.test(r.Status)) t.approved = money(t.approved + c);
   }
   res.json({
     period, all, totals, rules: rulesOf(o),
@@ -805,6 +805,7 @@ app.post('/api/sales/review', wrap(async (req, res) => {
   const me = whoami(req.body.email, o);
   if (!me.approver) return res.status(403).json({ error: 'Only approvers can review sales.' });
   const r = await findSale(req.body.row, req.body.logged);
+  if (/paid/i.test(r.Status)) return res.status(403).json({ error: 'This sale was paid and is locked.' });
   const v = { approve: ['Approved', me.email], reject: ['Rejected', me.email], undo: ['Pending', ''] }[req.body.action];
   if (!v) return res.status(400).json({ error: 'Unknown action.' });
   await rpc({ sheet: 'ops', action: 'update', tab: 'Sales', range: `I${r._row}:J${r._row}`, values: [v] });
@@ -816,6 +817,7 @@ app.post('/api/sales/delete', wrap(async (req, res) => {
   const o = await ops();
   const me = whoami(req.body.email, o);
   const r = await findSale(req.body.row, req.body.logged);
+  if (/paid/i.test(r.Status)) return res.status(403).json({ error: 'This sale was paid and is locked.' });
   const own = r.Email.toLowerCase() === me.email && /pending/i.test(r.Status);
   if (!own && !me.approver) return res.status(403).json({ error: 'You can only delete your own sales before they are reviewed.' });
   await rpc({ sheet: 'ops', action: 'delete', tab: 'Sales', rowIndex: r._row });
@@ -852,7 +854,7 @@ app.get('/api/hours', wrap(async (req, res) => {
   for (const r of rows) {
     const t = totals[r.Coach] = totals[r.Coach] || { total: 0, approved: 0, byType: {} };
     const h = Number(r.Hours) || 0;
-    t.total += h; if (/approved/i.test(r.Status)) t.approved += h;
+    t.total += h; if (/approved|paid/i.test(r.Status)) t.approved += h;
     t.byType[r.Type] = (t.byType[r.Type] || 0) + h;
   }
   const prevBase = addDays(parseIso(period.from), -1), nextBase = addDays(parseIso(period.to), 1);
@@ -902,6 +904,7 @@ app.post('/api/hours/approve', wrap(async (req, res) => {
   const me = whoami(req.body.email, o);
   if (!me.approver) return res.status(403).json({ error: 'Only approvers can approve hours.' });
   const r = await findRow(req.body.row, req.body.logged);
+  if (/paid/i.test(r.Status)) return res.status(403).json({ error: 'This entry was paid and is locked.' });
   const approve = req.body.undo ? ['Pending', ''] : ['Approved', me.email];
   await rpc({ sheet: 'ops', action: 'update', tab: 'Hours', range: `I${r._row}:J${r._row}`, values: [approve] });
   bust('ops-hours');
@@ -912,6 +915,7 @@ app.post('/api/hours/delete', wrap(async (req, res) => {
   const o = await ops();
   const me = whoami(req.body.email, o);
   const r = await findRow(req.body.row, req.body.logged);
+  if (/paid/i.test(r.Status)) return res.status(403).json({ error: 'This entry was paid and is locked. Ask Casey if it needs correcting.' });
   const own = r.Email.toLowerCase() === me.email && !/approved/i.test(r.Status);
   if (!own && !me.approver) return res.status(403).json({ error: 'You can only delete your own entries before they are approved.' });
   await rpc({ sheet: 'ops', action: 'delete', tab: 'Hours', rowIndex: r._row });

@@ -134,7 +134,7 @@ textarea{min-height:70px}
 .entry{border-bottom:1px solid var(--line);padding:10px 0}
 .entry .top{display:flex;justify-content:space-between;gap:10px}
 .st{font-size:12px;font-weight:600}
-.st.pending{color:var(--gold)} .st.approved{color:var(--ok)}
+.st.pending{color:var(--gold)} .st.approved{color:var(--ok)} .st.paid{color:var(--chalk)}
 /* guided tour */
 .helpbtn{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 16px);z-index:15;width:48px;height:48px;border-radius:50%;border:2px solid var(--gold);background:#000;color:var(--gold);font:700 24px/1 'Barlow Condensed',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.6)}
 .helpbtn.pulse{animation:pulse 1.6s ease-in-out 4}
@@ -411,7 +411,7 @@ async function loadHours() {
     const fmt = x => { const y = fromIso(x); return `${DN[y.getDay()]} ${y.getMonth()+1}/${y.getDate()}`; };
     const $$ = n => '$' + Number(n || 0).toFixed(2);
     const people = [...new Set([...Object.keys(d.totals), ...Object.keys(s.totals)])];
-    const stat = st => `<span class="st ${/approved/i.test(st)?'approved':/rejected/i.test(st)?'':'pending'}">${esc(st)}</span>`;
+    const stat = st => `<span class="st ${/paid/i.test(st)?'paid':/approved/i.test(st)?'approved':/rejected/i.test(st)?'':'pending'}">${esc(st)}${/paid/i.test(st)?' 🔒':''}</span>`;
     el.innerHTML = `
       <div class="row" style="margin-top:0"><button class="btn red" id="newPrivate">Log private</button><button class="btn" id="newHours">Log hours</button><button class="btn" id="newSale">Log sale</button>
         ${me.approver ? `<button class="chip" aria-pressed="${state.hoursAll}" id="allToggle">All staff</button>` : ''}</div>
@@ -430,17 +430,17 @@ async function loadHours() {
       ${d.rows.map(r => `<div class="entry"><div class="top"><span><b>${esc(fmt(r.date))}${r.start ? ' ' + esc(r.start) : ''}</b> · ${esc(r.type)}${d.all ? ` · ${esc(r.coach)}` : ''}</span><span>${esc(r.hours)} h</span></div>
         <div class="small">${esc(r.detail)}</div>${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ''}
         <div class="top small" style="margin-top:4px">${stat(r.status)}
-          <span>${me.approver && d.all ? `<button class="chip" data-approve='${esc(JSON.stringify({ row:r.row, logged:r.logged, undo:/approved/i.test(r.status) }))}'>${/approved/i.test(r.status)?'Undo':'Approve'}</button>` : ''}
-          ${(r.mine && !/approved/i.test(r.status)) || me.approver ? `<button class="chip" data-del='${esc(JSON.stringify({ row:r.row, logged:r.logged }))}'>Delete</button>` : ''}</span></div></div>`).join('')}
+          <span>${/paid/i.test(r.status) ? '' : me.approver && d.all ? `<button class="chip" data-approve='${esc(JSON.stringify({ row:r.row, logged:r.logged, undo:/approved/i.test(r.status) }))}'>${/approved/i.test(r.status)?'Undo':'Approve'}</button>` : ''}
+          ${/paid/i.test(r.status) ? '' : (r.mine && !/approved/i.test(r.status)) || me.approver ? `<button class="chip" data-del='${esc(JSON.stringify({ row:r.row, logged:r.logged }))}'>Delete</button>` : ''}</span></div></div>`).join('')}
       ${s.rows.length ? `<div class="grouphead">Sales</div>` : ''}
       ${s.rows.map(r => { const k = esc(JSON.stringify({ row:r.row, logged:r.logged }));
         return `<div class="entry"><div class="top"><span><b>${esc(fmt(r.date))}</b> · ${esc(r.type)}${s.all ? ` · ${esc(r.staff)}` : ''}</span><span>${$$(r.commission)}</span></div>
         <div class="small">${esc(r.item)} · sale ${$$(r.amount)}</div>${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ''}
         <div class="top small" style="margin-top:4px">${stat(r.status)}
-          <span>${me.approver && s.all ? (/pending/i.test(r.status)
+          <span>${/paid/i.test(r.status) ? '' : me.approver && s.all ? (/pending/i.test(r.status)
               ? `<button class="chip" data-review='${k}' data-act="approve">Approve</button><button class="chip" data-review='${k}' data-act="reject">Reject</button>`
               : `<button class="chip" data-review='${k}' data-act="undo">Undo</button>`) : ''}
-          ${(r.mine && /pending/i.test(r.status)) || me.approver ? `<button class="chip" data-sdel='${k}'>Delete</button>` : ''}</span></div></div>`; }).join('')}
+          ${/paid/i.test(r.status) ? '' : (r.mine && /pending/i.test(r.status)) || me.approver ? `<button class="chip" data-sdel='${k}'>Delete</button>` : ''}</span></div></div>`; }).join('')}
       ${me.approver && !state.hoursAll ? '<p class="muted small">Turn on All staff to approve hours and sales. Check each sale against Zen Planner before approving it.</p>' : ''}`;
   } catch (e) { el.innerHTML = errBox(e); }
 }
@@ -727,11 +727,12 @@ const TOUR = [
 let tourAt = -1, tourSteps = [];
 function tourEnd() {
   tourAt = -1;
+  document.querySelectorAll('details[data-touropen]').forEach(d => { d.open = false; d.removeAttribute('data-touropen'); });
   ['tour-spot','tour-card','tour-block'].forEach(id => document.getElementById(id)?.remove());
   try { localStorage.setItem('spartan-toured', '1'); } catch {}
   $('#helpBtn').classList.remove('pulse');
 }
-async function tourShow(i) {
+async function tourShow(i, dir = 1) {
   tourAt = i;
   const s = tourSteps[i];
   if (main.scrollLeft !== main.clientWidth * s.pane) { main.scrollTo({ left: main.clientWidth * s.pane }); await new Promise(r => setTimeout(r, 380)); }
@@ -749,9 +750,13 @@ async function tourShow(i) {
     }
     if (el) break;
   }
-  if (!el) return tourShow(i + 1 < tourSteps.length ? i + 1 : i);
-  if (s.open) { const d = el.closest('details') || el; if (d.tagName === 'DETAILS') d.open = true; }
-  const det = el.closest('details'); if (det) det.open = true;
+  if (!el) {   // not on screen for this person or this day: skip it in the direction they're going
+    const n = i + dir;
+    if (n >= 0 && n < tourSteps.length) return tourShow(n, dir);
+    return dir < 0 ? tourShow(i + 1, 1) : tourEnd();
+  }
+  const det = el.tagName === 'DETAILS' ? el : el.closest('details');
+  if (det && !det.open) { det.open = true; det.setAttribute('data-touropen', ''); }
   el.scrollIntoView({ block: 'center', behavior: 'instant' });
   await new Promise(r => setTimeout(r, 60));
   const r = el.getBoundingClientRect(), pad = 6;
@@ -768,7 +773,7 @@ async function tourShow(i) {
   const below = r.bottom + 14, ch = card.offsetHeight, vh = window.innerHeight;
   card.style.top = (below + ch < vh - 10 ? below : Math.max(10, r.top - ch - 14)) + 'px';
   $('#tNext').onclick = () => i === tourSteps.length - 1 ? tourEnd() : tourShow(i + 1);
-  const bk = $('#tBack'); if (bk) bk.onclick = () => tourShow(i - 1);
+  const bk = $('#tBack'); if (bk) bk.onclick = () => tourShow(i - 1, -1);
   const sk = $('#tSkip'); if (sk) sk.onclick = tourEnd;
   $('#tNext').focus();
 }

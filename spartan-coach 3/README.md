@@ -143,6 +143,28 @@ The **Source** column says `App` for hand-logged sales. Once Zen Planner's
 sales-by-staff report can be exported, it can be imported with `Zen Planner`
 as the source, and hand-logging becomes the exception.
 
+## Payroll menu (for Casey)
+
+`Payroll.gs` adds a **Spartan Payroll** menu to the Staff Ops sheet. It is a
+separate script from the bridge and lives inside the sheet:
+Staff Ops → **Extensions → Apps Script** → paste `Payroll.gs` → Save → reload
+the sheet. First use asks for authorization (Advanced → Go to … → Allow).
+
+The panel works on one pay period at a time (current, previous, or custom):
+
+| Button | What it does |
+|---|---|
+| Summary by staff | **Payroll Summary** tab: hours by type, approved vs pending, privates, sales and commission per person, with totals |
+| Staff detail | **Staff Detail** tab: every entry one person logged that period |
+| Run payroll check | **Payroll Check** tab: duplicates, days over 10 hours, overlapping privates, future dates, zero-dollar sales, classes logged by someone not on that class's schedule, and anything still pending |
+| Approve selected rows | Approves highlighted rows on the Hours or Sales tab (also in the menu itself) |
+| Mark period paid | Sets the period's Approved entries to **Paid**. Paid entries are locked in the app: nobody can approve, undo, or delete them |
+| Export for payroll | **Payroll Export** tab plus a CSV download: approved hours by type and approved commission per person |
+
+The four report tabs are rebuilt on every run, so don't type in them. Dollar
+pay isn't calculated yet: that needs each person's rates (a Pay Rates tab, once
+confirmed).
+
 ## Zen Planner webhooks (capture mode)
 
 Zen Planner → Settings → Webhooks posts updates for three feeds. Point them at:
